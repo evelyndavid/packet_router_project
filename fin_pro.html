@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packet Routers</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+
+ .packet {
+            width: 30px;
+            height: 30px;
+            background-color: #ff0000; /* Red color */
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+        }
+
+#paths-container {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f6f6f6;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#paths-container h3 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 24px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+#paths-container p {
+    margin: 10px 0;
+    color: #666;
+}
+
+#paths-container p:nth-child(odd) {
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#paths-container p:nth-child(even) {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+
+        #navbar {
+            background-color: #333;
+            padding: 10px 20px;
+            color: white;
+            text-align: center;
+        }
+
+        #navbar h1 {
+            margin: 0;
+        }
+
+        #container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #333;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:active {
+            background-color: #3e8e41;
+        }
+
+        #graph-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar">
+        <h1>Packet Routers</h1>
+    </div>
+
+    <div id="container">
+        <label for="nodesTextField">Number of Nodes:</label>
+        <input type="number" id="nodesTextField" min="1" value="3">
+
+        <label for="weightsTextField">Weights:</label>
+        <input type="text" id="weightsTextField" placeholder="Enter weights separated by space">
+
+        <label for="capacityTextField">Channel Capacity:</label>
+        <input type="number" id="capacityTextField" min="1" value="10">
+
+        <label for="packetsTextField">Max Packets:</label>
+        <input type="number" id="packetsTextField" min="1" value="5">
+
+        <label for="sourceNodeTextField">Source Node:</label>
+        <input type="number" id="sourceNodeTextField" min="0" value="0">
+
+        <label for="destinationNodeTextField">Destination Node:</label>
+        <input type="number" id="destinationNodeTextField" min="0" value="2">
+
+        <button onclick="runAlgorithm()">Run Algorithm</button>
+    </div>
+
+    <div id="graph-container">
+        <svg id="graph" width="100%" height="100%"></svg>
+    </div>
+
+    <div id="paths-container">
+        <!-- Output container for paths -->
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        function generateGraph() {
+            const numNodes = parseInt(document.getElementById("nodesTextField").value);
+            const weights = document.getElementById("weightsTextField").value.split(' ').map(Number);
+
+            const nodes = [];
+            const links = [];
+
+            // Generate nodes
+            for (let i = 0; i < numNodes; i++) {
+                nodes.push({ id: i, name: "Node " + (weights[i]) });
+            }
+
+            // Generate links with weights
+            let k = 0;
+            for (let i = 0; i < numNodes; i++) {
+                for (let j = 0; j < numNodes; j++) {
+                    if (weights[k] !== 0) {
+                        links.push({ source: i, target: j, weight: weights[k] });
+                    }
+                    k++;
+                }
+            }
+
+            const width = Math.min(window.innerWidth, 1200); // Adjusted to fit within window
+            const height = Math.min(window.innerHeight, 800); // Adjusted to fit within window
+
+            const svg = d3.select("#graph")
+                .attr("width", width)
+                .attr("height", height);
+
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id).distance(200))
+                .force("charge", d3.forceManyBody().strength(-1000))
+                .force("center", d3.forceCenter(width / 2, height / 2));
+
+            const link = svg.selectAll(".link")
+                .data(links)
+                .enter().append("line")
+                .attr("class", "link")
+                .style("stroke", "#000")
+                .style("stroke-width", d => Math.sqrt(d.weight));
+
+            const node = svg.selectAll(".node")
+                .data(nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", 10)
+                .style("fill", "#1f77b4")
+                .style("stroke", "#fff")
+                .style("stroke-width", 2);
+
+            node.append("title")
+                .text(d => d.name);
+		
+	node.append("text")
+    .attr("dy", 4) // Adjust vertical position of text
+    .attr("text-anchor", "middle")
+    .style("fill", "white")
+    .text(d => d.name); // Display node name inside the circle
+
+            const text = svg.selectAll(".text")
+                .data(links)
+                .enter().append("text")
+                .attr("class", "weight")
+                .attr("dy", -5)
+                .attr("text-anchor", "middle")
+                .text(d => d.weight);
+
+            simulation.on("tick", () => {
+                link.attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node.attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+
+                text.attr("x", d => (d.source.x + d.target.x) / 2)
+                    .attr("y", d => (d.source.y + d.target.y) / 2);
+            });
+        }
+
+        function runAlgorithm() {
+            const nodesTextField = document.getElementById("nodesTextField").value;
+            const weightsTextField = document.getElementById("weightsTextField").value;
+            const capacityTextField = document.getElementById("capacityTextField").value;
+            const packetsTextField = document.getElementById("packetsTextField").value;
+            const sourceNodeTextField = document.getElementById("sourceNodeTextField").value;
+            const destinationNodeTextField = document.getElementById("destinationNodeTextField").value;
+
+            const app = new AllPathsInWeightedGraph(nodesTextField, weightsTextField, capacityTextField, packetsTextField, sourceNodeTextField, destinationNodeTextField);
+            app.main();
+            generateGraph(); // Call generateGraph after running the main algorithm
+        }
+
+        class AllPathsInWeightedGraph {
+            constructor(nodesTextField, weightsTextField, capacityTextField, packetsTextField, sourceNodeTextField, destinationNodeTextField) {
+                this.allPaths = [];
+                this.adjacencyMatrix = null;
+                this.maxPackets = 0;
+                this.channelCapacity = 0;
+                this.nodesTextField = nodesTextField;
+                this.weightsTextField = weightsTextField;
+                this.capacityTextField = capacityTextField;
+                this.packetsTextField = packetsTextField;
+                this.sourceNodeTextField = sourceNodeTextField;
+                this.destinationNodeTextField = destinationNodeTextField;
+                this.graphContainer = document.getElementById("graph");
+            }
+
+            main() {
+                this.showPaths();
+                this.checkPacket();
+                this.routePacket();
+            }
+routePacket() {
+    const pathsContainer = document.getElementById("graph-container");
+    const packetsContainer = document.createElement("div");
+    packetsContainer.classList.add("packets-container");
+    pathsContainer.appendChild(packetsContainer);
+
+    if (this.maxPackets <= this.channelCapacity * this.allPaths.length) {
+        pathsContainer.innerHTML += '<p>All possible paths sorted by weight:</p>';
+        this.allPaths.sort((pathA, pathB) => {
+            const weightA = this.calculatePathWeight(pathA);
+            const weightB = this.calculatePathWeight(pathB);
+            return weightA - weightB;
+        });
+
+        let packetsSent = 0;
+        for (let i = 0; i < this.allPaths.length && packetsSent < this.maxPackets; i++) {
+            const path = this.allPaths[i];
+            const repetitions = Math.min(this.channelCapacity, this.maxPackets - packetsSent);
+            for (let j = 0; j < repetitions; j++) {
+                this.animatePacket(packetsContainer, path, packetsSent);
+                packetsSent++;
+            }
+        }
+        if (packetsSent === this.maxPackets) {
+            pathsContainer.innerHTML += '<p>All packets received</p>';
+        } else {
+            pathsContainer.innerHTML += '<p>Switch on recovery mode pls</p>';
+        }
+    } else {
+        pathsContainer.innerHTML += '<p>It will take longer time to send so use all these paths.</p>';
+        for (const path of this.allPaths) {
+            const pathWeight = this.calculatePathWeight(path);
+            const pathText = path.join(" -> ");
+            pathsContainer.innerHTML += `<p>${pathText} Weight: ${pathWeight}</p>`;
+        }
+    }
+    pathsContainer.innerHTML += '<p>Packets routed successfully.</p>';
+}
+
+animatePacket(container, path, packetIndex) {
+    const packet = document.createElement("div");
+    packet.classList.add("packet");
+    container.appendChild(packet);
+
+    const length = path.getTotalLength();
+    const speed = 0.1; // Adjust the speed as needed
+    const duration = length / speed;
+
+    packet.style.transition = `transform ${duration}s linear`;
+    setTimeout(() => {
+        packet.style.transform = `translate(${length}px)`;
+    }, 10 * packetIndex); // Delay each packet for smoother animation
+}
+
+            showPaths() {
+                const numNodes = parseInt(this.nodesTextField);
+                const weights = this.weightsTextField.split(' ');
+                this.adjacencyMatrix = Array.from({ length: numNodes }, () => Array(numNodes).fill(0));
+                let k = 0;
+                for (let i = 0; i < numNodes; i++) {
+                    for (let j = 0; j < numNodes; j++) {
+                        this.adjacencyMatrix[i][j] = parseInt(weights[k++]);
+                    }
+                }
+
+                const sourceNode = parseInt(this.sourceNodeTextField);
+                const destinationNode = parseInt(this.destinationNodeTextField);
+
+                this.maxPackets = parseInt(this.packetsTextField);
+                this.channelCapacity = parseInt(this.capacityTextField);
+
+                this.allPaths = [];
+                this.findPaths(this.adjacencyMatrix, sourceNode, destinationNode, [], 0);
+                this.allPathsDisplay();
+            }
+
+            findPaths(graph, currentNode, destinationNode, currentPath, currentWeight) {
+                currentPath.push(currentNode);
+
+                if (currentNode === destinationNode) {
+                    this.allPaths.push([...currentPath]);
+                } else {
+                    for (let i = 0; i < graph[currentNode].length; i++) {
+                        if (graph[currentNode][i] > 0 && !currentPath.includes(i)) {
+                            this.findPaths(graph, i, destinationNode, currentPath, currentWeight + graph[currentNode][i]);
+                        }
+                    }
+                }
+
+                currentPath.pop();
+            }
+
+            allPathsDisplay() {
+                const pathsContainer = document.getElementById("paths-container");
+                pathsContainer.innerHTML = '<h3>Paths Available</h3>';
+                for (const path of this.allPaths) {
+                    const pathWeight = this.calculatePathWeight(path);
+                    const pathText = path.join(" -> ");
+                    pathsContainer.innerHTML += `<p>${pathText} Weight: ${pathWeight}</p>`;
+                }
+            }
+
+
+            checkPacket() {
+                const packetsCanSend = this.maxPackets < this.channelCapacity * this.allPaths.length;
+                const packetStatus = packetsCanSend ? 'Yes packets can be sent proceed further to know paths' : 'Packets can be sent but there is traffic all around it will take a long time';
+                this.allPathsDisplay();
+            }
+
+            routePacket() {
+                const pathsContainer = document.getElementById("paths-container");
+
+                if (this.maxPackets <= this.channelCapacity * this.allPaths.length) {
+                    pathsContainer.innerHTML += '<p>All possible paths sorted by weight:</p>';
+
+                    // Sort paths by weight in ascending order
+                    this.allPaths.sort((pathA, pathB) => {
+                        const weightA = this.calculatePathWeight(pathA);
+                        const weightB = this.calculatePathWeight(pathB);
+                        return weightA - weightB;
+                    });
+
+                    let packetsSent = 0;
+                    for (let i = 0; i < this.allPaths.length && packetsSent < this.maxPackets; i++) {
+                        const path = this.allPaths[i];
+                        const repetitions = Math.min(this.channelCapacity, this.maxPackets - packetsSent);
+                        for (let j = 0; j < repetitions; j++) {
+                            pathsContainer.innerHTML += `<p>Packet: ${packetsSent}<br>${path.join(" -> ")}</p>`;
+                            packetsSent++;
+                        }
+                    }
+                    if (packetsSent === this.maxPackets) {
+                        pathsContainer.innerHTML += '<p>All packets received</p>';
+                    } else {
+                        pathsContainer.innerHTML += '<p>Switch on recovery mode pls</p>';
+                    }
+                } else {
+                    pathsContainer.innerHTML += '<p>It will take longer time to send so use all these paths.</p>';
+                    for (const path of this.allPaths) {
+                        const pathWeight = this.calculatePathWeight(path);
+                        const pathText = path.join(" -> ");
+                        pathsContainer.innerHTML += `<p>${pathText} Weight: ${pathWeight}</p>`;
+                    }
+                }
+                pathsContainer.innerHTML += '<p>Packets routed successfully.</p>';
+            }
+
+
+            calculatePathWeight(path) {
+                let weight = 0;
+                for (let i = 0; i < path.length - 1; i++) {
+                    weight += this.adjacencyMatrix[path[i]][path[i + 1]];
+                }
+                return weight;
+            }
+        }
+function animatePackets(paths) {
+            const pathsContainer = document.getElementById("graph-container");
+            const packetsContainer = document.createElement("div");
+            packetsContainer.classList.add("packets-container");
+            pathsContainer.appendChild(packetsContainer);
+
+            const packets = paths.map((path, index) => {
+                const packet = document.createElement("div");
+                packet.classList.add("packet");
+                packet.style.left = "0px"; // Start packet at the beginning of the path
+                packetsContainer.appendChild(packet);
+                return { packet, path, index };
+            });
+
+            packets.forEach(({ packet, path }, index) => {
+                const totalLength = path.getTotalLength();
+                const speed = 50; // Adjust the speed as needed
+                const duration = totalLength / speed;
+
+                packet.style.transitionDuration = `${duration}s`;
+                packet.style.left = `${totalLength}px`; // Move packet to the end of the path
+            });
+        }
+    </script>
+</body>
+
+</html>
